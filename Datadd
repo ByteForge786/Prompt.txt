@@ -110,14 +110,19 @@ def convert_to_dateadd(sql_string):
         (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(hour|day|week|month|year|quarter)s?'?", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{float(m.group(3)) * interval_to_days[m.group(4).lower()]}, CURRENT_DATE())"),
         (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(hour|day|week|month|year|quarter)s?'?", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{float(m.group(3)) * interval_to_days[m.group(4).lower()]}, CURRENT_DATE())"),
 
-        # New pattern for Max(cobdate) - 5 type cases
-        (r"(?i)(\w+\([\w\s,]+\))\s*(-|\+)\s*(\d+)", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{m.group(3)}, {m.group(1)})"),
+        # Max(cobdate) cases
+        (r"(?i)Max\(cobdate\)(?:\s*(-|\+)\s*(\d+))?", lambda m: f"DATEADD(day, {'-' if m.group(1) == '-' else '-'}{m.group(2) if m.group(2) else '1'}, CURRENT_DATE())"),
+
+        # EXTRACT cases
+        (r"(?i)EXTRACT\((\w+)\s+FROM\s+(CURRENT_DATE|CURRENT_TIMESTAMP|NOW\(\))\)\s*(-|\+)\s*(\d+)", lambda m: f"DATEADD({m.group(1).lower()}, {'-' if m.group(3) == '-' else ''}{m.group(4)}, CURRENT_DATE())"),
+
+        # Additional edge cases
+        (r"(?i)(CURRENT_DATE|CURRENT_TIMESTAMP|NOW\(\))\s*(-|\+)\s*(\d+)", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{m.group(3)}, CURRENT_DATE())"),
+        (r"(?i)DATE_TRUNC\('(\w+)',\s*(CURRENT_DATE|CURRENT_TIMESTAMP|NOW\(\))\)", lambda m: f"DATEADD({m.group(1).lower()}, DATEDIFF({m.group(1).lower()}, 0, CURRENT_DATE()), 0)"),
     ]
 
     for pattern, replacement in patterns:
-        match = re.search(pattern, sql_string)
-        if match:
-            return sql_string.replace(match.group(0), replacement(match))
+        sql_string = re.sub(pattern, replacement, sql_string)
 
     return sql_string
 
@@ -154,6 +159,13 @@ test_cases = [
     "Select Max(cobdate) from table where cobdate < current_date",
     "Select Max(cobdate) - 5 from table where cobdate < current_date",
     "Select Min(cobdate) + 3 from table where cobdate < current_date",
+    "SELECT * FROM orders WHERE order_date > Max(cobdate) - 5 AND order_date < current_date",
+    "SELECT EXTRACT(DAY FROM CURRENT_DATE) - 3",
+    "SELECT EXTRACT(MONTH FROM CURRENT_TIMESTAMP) + 2",
+    "SELECT CURRENT_DATE - 7",
+    "SELECT NOW() + 14",
+    "SELECT DATE_TRUNC('month', CURRENT_DATE)",
+    "SELECT DATE_TRUNC('year', NOW())",
 ]
 
 for case in test_cases:
