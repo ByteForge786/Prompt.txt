@@ -77,11 +77,11 @@ for case in test_cases:
 
 
 
-import re
-
 def convert_to_dateadd(sql_string):
     interval_to_days = {
-        'day': 1, 'week': 7, 'month': 30, 'year': 365, 'quarter': 91, 'hour': 1/24
+        'day': 1, 'days': 1, 'week': 7, 'weeks': 7, 'month': 30, 'months': 30,
+        'year': 365, 'years': 365, 'quarter': 91, 'quarters': 91,
+        'hour': 1/24, 'hours': 1/24
     }
 
     def replacement_function(match):
@@ -93,16 +93,12 @@ def convert_to_dateadd(sql_string):
         return f"DATEADD(day, {sign * days}, CURRENT_DATE())"
 
     patterns = [
-        # SQLite, PostgreSQL
         r"(?i)date\('now'(?:,\s*'localtime')?\)\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
         r"(?i)date\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
         r"(?i)datetime\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
         r"(?i)date\('now'(?:,\s*'localtime')?,\s*'start of month',\s*'(-?)(\d+)\s+(month|months|year|years)'\)",
-        # MySQL
         r"(?i)date_(sub|add)\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)\)",
-        # SQL Server
         r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\))\)",
-        # PostgreSQL and General
         r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
         r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
     ]
@@ -111,41 +107,3 @@ def convert_to_dateadd(sql_string):
         sql_string = re.sub(pattern, replacement_function, sql_string)
     
     return sql_string
-
-# Test cases
-test_cases = [
-    "SELECT date('now') - interval '1 day'",
-    "SELECT DATE('NOW') - INTERVAL '1 DAY'",
-    "SELECT date('now', '-1 month')",
-    "SELECT DATE('NOW', '-1 MONTH')",
-    "SELECT datetime('now', '-2 weeks')",
-    "SELECT DATETIME('NOW', '-2 WEEK')",
-    "SELECT date('now', 'start of month', '-3 months')",
-    "SELECT DATE('NOW', 'START OF MONTH', '-3 MONTH')",
-    "SELECT current_date - interval '5 days'",
-    "SELECT CURRENT_DATE - INTERVAL '5 DAY'",
-    "SELECT * FROM table WHERE date > date('now') - interval '7 days'",
-    "SELECT * FROM table WHERE date > DATE('NOW') - INTERVAL '7 DAY'",
-    "SELECT DATE_SUB(CURDATE(), INTERVAL 1 MONTH)",
-    "SELECT date_sub(curdate(), interval 1 month)",
-    "SELECT DATE_ADD(NOW(), INTERVAL 2 WEEKS)",
-    "SELECT date_add(now(), interval 2 week)",
-    "SELECT DATEADD(day, -3, GETDATE())",
-    "SELECT dateadd(days, -3, getdate())",
-    "SELECT CURRENT_DATE + INTERVAL '1 YEAR'",
-    "SELECT current_date + interval '1 years'",
-    "SELECT NOW() - INTERVAL '6 HOUR'",
-    "SELECT now() - interval '6 hours'",
-    "SELECT CURRENT_TIMESTAMP - '3 DAYS'",
-    "SELECT current_timestamp - '3 day'",
-    "SELECT date('now', 'localtime', '-1 day')",
-    "SELECT DATE('NOW', 'LOCALTIME', '-1 DAY')",
-    "SELECT date('now') + interval '1 quarter'",
-    "SELECT DATE('NOW') + INTERVAL '1 QUARTERS'",
-]
-
-# Run test cases
-for case in test_cases:
-    print(f"Original: {case}")
-    print(f"Converted: {convert_to_dateadd(case)}")
-    print()
