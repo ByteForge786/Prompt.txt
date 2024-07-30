@@ -1,0 +1,76 @@
+import re
+
+def convert_to_dateadd(sql_string):
+    interval_to_days = {
+        'day': 1, 'days': 1,
+        'week': 7, 'weeks': 7,
+        'month': 30, 'months': 30,
+        'year': 365, 'years': 365,
+        'quarter': 91, 'quarters': 91
+    }
+
+    patterns = [
+        # SQLite, PostgreSQL
+        (r"(?i)date\('now'(?:,\s*'localtime')?\)\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|week|month|year|quarter)s?'?", lambda m: f"DATEADD(day, {'-' if m.group(1) == '-' else ''}{int(m.group(2)) * interval_to_days[m.group(3).lower()]}, CURRENT_DATE())"),
+        (r"(?i)date\('now'(?:,\s*'localtime')?,\s*'(-?\d+)\s+(day|week|month|year|quarter)s?'\)", lambda m: f"DATEADD(day, {int(m.group(1)) * interval_to_days[m.group(2).lower()]}, CURRENT_DATE())"),
+        (r"(?i)datetime\('now'(?:,\s*'localtime')?,\s*'(-?\d+)\s+(day|week|month|year|quarter)s?'\)", lambda m: f"DATEADD(day, {int(m.group(1)) * interval_to_days[m.group(2).lower()]}, CURRENT_DATE())"),
+        (r"(?i)date\('now'(?:,\s*'localtime')?,\s*'start of month',\s*'(-?\d+)\s+(month|year)s?'\)", lambda m: f"DATEADD(day, {int(m.group(1)) * interval_to_days[m.group(2).lower()]}, DATEADD(day, 1, EOMONTH(CURRENT_DATE(), -1)))"),
+
+        # MySQL
+        (r"(?i)date_sub\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|week|month|year|quarter)s?\)", lambda m: f"DATEADD(day, -{int(m.group(2)) * interval_to_days[m.group(3).lower()]}, CURRENT_DATE())"),
+        (r"(?i)date_add\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|week|month|year|quarter)s?\)", lambda m: f"DATEADD(day, {int(m.group(2)) * interval_to_days[m.group(3).lower()]}, CURRENT_DATE())"),
+
+        # SQL Server
+        (r"(?i)dateadd\((day|week|month|year|quarter),\s*(-?\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\))\)", lambda m: f"DATEADD(day, {int(m.group(2)) * interval_to_days[m.group(1).lower()]}, CURRENT_DATE())"),
+
+        # PostgreSQL
+        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'(\d+)\s+(day|week|month|year|quarter)s?'", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{int(m.group(3)) * interval_to_days[m.group(4).lower()]}, CURRENT_DATE())"),
+
+        # General
+        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|week|month|year|quarter)s?'?", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{int(m.group(3)) * interval_to_days[m.group(4).lower()]}, CURRENT_DATE())"),
+        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|week|month|year|quarter)s?'?", lambda m: f"DATEADD(day, {'-' if m.group(2) == '-' else ''}{int(m.group(3)) * interval_to_days[m.group(4).lower()]}, CURRENT_DATE())"),
+    ]
+
+    for pattern, replacement in patterns:
+        match = re.search(pattern, sql_string)
+        if match:
+            return sql_string.replace(match.group(0), replacement(match))
+
+    return sql_string
+
+# Test cases
+test_cases = [
+    "SELECT date('now') - interval '1 day'",
+    "SELECT DATE('NOW') - INTERVAL '1 DAY'",
+    "SELECT date('now', '-1 month')",
+    "SELECT DATE('NOW', '-1 MONTH')",
+    "SELECT datetime('now', '-2 week')",
+    "SELECT DATETIME('NOW', '-2 WEEK')",
+    "SELECT date('now', 'start of month', '-3 month')",
+    "SELECT DATE('NOW', 'START OF MONTH', '-3 MONTH')",
+    "SELECT current_date - interval '5 day'",
+    "SELECT CURRENT_DATE - INTERVAL '5 DAY'",
+    "SELECT * FROM table WHERE date > date('now') - interval '7 day'",
+    "SELECT * FROM table WHERE date > DATE('NOW') - INTERVAL '7 DAY'",
+    "SELECT DATE_SUB(CURDATE(), INTERVAL 1 MONTH)",
+    "SELECT date_sub(curdate(), interval 1 month)",
+    "SELECT DATE_ADD(NOW(), INTERVAL 2 WEEK)",
+    "SELECT date_add(now(), interval 2 week)",
+    "SELECT DATEADD(day, -3, GETDATE())",
+    "SELECT dateadd(day, -3, getdate())",
+    "SELECT CURRENT_DATE + INTERVAL '1 YEAR'",
+    "SELECT current_date + interval '1 year'",
+    "SELECT NOW() - INTERVAL '6 HOUR'",
+    "SELECT now() - interval '6 hour'",
+    "SELECT CURRENT_TIMESTAMP - '3 DAY'",
+    "SELECT current_timestamp - '3 day'",
+    "SELECT date('now', 'localtime', '-1 day')",
+    "SELECT DATE('NOW', 'LOCALTIME', '-1 DAY')",
+    "SELECT date('now') + interval '1 quarter'",
+    "SELECT DATE('NOW') + INTERVAL '1 QUARTER'",
+]
+
+for case in test_cases:
+    print(f"Original: {case}")
+    print(f"Converted: {convert_to_dateadd(case)}")
+    print()
