@@ -78,7 +78,6 @@ for case in test_cases:
 
 
 
-
 import re
 
 def convert_to_dateadd(sql_string):
@@ -88,7 +87,7 @@ def convert_to_dateadd(sql_string):
         'month': 30, 'months': 30,
         'year': 365, 'years': 365,
         'quarter': 91, 'quarters': 91,
-        'hour': 1/24, 'hours': 1/24
+        'hour': 1/24, 'hours': 1/24  # Added hour conversion
     }
 
     def replacement_function(match):
@@ -111,10 +110,7 @@ def convert_to_dateadd(sql_string):
         # SQL Server
         (r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\)))"),
 
-        # PostgreSQL
-        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'"),
-
-        # General
+        # PostgreSQL and General
         (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?"),
         (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?"),
     ]
