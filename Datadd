@@ -81,23 +81,15 @@ import re
 
 def convert_to_dateadd(sql_string):
     interval_to_days = {
-        'day': 1, 'days': 1,
-        'week': 7, 'weeks': 7,
-        'month': 30, 'months': 30,
-        'year': 365, 'years': 365,
-        'quarter': 91, 'quarters': 91,
-        'hour': 1/24, 'hours': 1/24
+        'day': 1, 'week': 7, 'month': 30, 'year': 365, 'quarter': 91, 'hour': 1/24
     }
 
     def replacement_function(match):
         groups = match.groups()
         sign = -1 if '-' in groups else 1
-        
-        # Find the number and unit in the groups
         number = next((g for g in groups if g and g.isdigit()), '1')
-        unit = next((g for g in groups if g and g.lower() in interval_to_days), 'day')
-        
-        days = int(number) * interval_to_days[unit.lower()]
+        unit = next((g for g in groups if g and g.lower().rstrip('s') in interval_to_days), 'day')
+        days = int(number) * interval_to_days[unit.lower().rstrip('s')]
         return f"DATEADD(day, {sign * days}, CURRENT_DATE())"
 
     patterns = [
@@ -106,13 +98,10 @@ def convert_to_dateadd(sql_string):
         r"(?i)date\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
         r"(?i)datetime\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
         r"(?i)date\('now'(?:,\s*'localtime')?,\s*'start of month',\s*'(-?)(\d+)\s+(month|months|year|years)'\)",
-
         # MySQL
         r"(?i)date_(sub|add)\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)\)",
-
         # SQL Server
         r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\))\)",
-
         # PostgreSQL and General
         r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
         r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
@@ -120,7 +109,7 @@ def convert_to_dateadd(sql_string):
 
     for pattern in patterns:
         sql_string = re.sub(pattern, replacement_function, sql_string)
-
+    
     return sql_string
 
 # Test cases
@@ -155,6 +144,7 @@ test_cases = [
     "SELECT DATE('NOW') + INTERVAL '1 QUARTERS'",
 ]
 
+# Run test cases
 for case in test_cases:
     print(f"Original: {case}")
     print(f"Converted: {convert_to_dateadd(case)}")
