@@ -77,7 +77,6 @@ for case in test_cases:
 
 
 
-
 import re
 
 def convert_to_dateadd(sql_string):
@@ -87,32 +86,36 @@ def convert_to_dateadd(sql_string):
         'month': 30, 'months': 30,
         'year': 365, 'years': 365,
         'quarter': 91, 'quarters': 91,
-        'hour': 1/24, 'hours': 1/24  # Added hour conversion
+        'hour': 1/24, 'hours': 1/24
     }
 
     def replacement_function(match):
-        sign = -1 if match.group(1) == '-' or match.group(2) == '-' else 1
-        number = int(match.group(3) if match.group(3) else match.group(2))
-        unit = match.group(4) if match.group(4) else match.group(3)
-        days = number * interval_to_days[unit.lower()]
+        groups = match.groups()
+        sign = -1 if '-' in groups else 1
+        
+        # Find the number and unit in the groups
+        number = next((g for g in groups if g and g.isdigit()), '1')
+        unit = next((g for g in groups if g and g.lower() in interval_to_days), 'day')
+        
+        days = int(number) * interval_to_days[unit.lower()]
         return f"DATEADD(day, {sign * days}, CURRENT_DATE())"
 
     patterns = [
         # SQLite, PostgreSQL
-        (r"(?i)date\('now'(?:,\s*'localtime')?\)\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?"),
-        (r"(?i)date\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)"),
-        (r"(?i)datetime\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)"),
-        (r"(?i)date\('now'(?:,\s*'localtime')?,\s*'start of month',\s*'(-?)(\d+)\s+(month|months|year|years)'\)"),
+        r"(?i)date\('now'(?:,\s*'localtime')?\)\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
+        r"(?i)date\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
+        r"(?i)datetime\('now'(?:,\s*'localtime')?,\s*'(-?)(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'\)",
+        r"(?i)date\('now'(?:,\s*'localtime')?,\s*'start of month',\s*'(-?)(\d+)\s+(month|months|year|years)'\)",
 
         # MySQL
-        (r"(?i)date_(sub|add)\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)\)"),
+        r"(?i)date_(sub|add)\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)\)",
 
         # SQL Server
-        (r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\)))"),
+        r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\)))",
 
         # PostgreSQL and General
-        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?"),
-        (r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?"),
+        r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
+        r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
     ]
 
     for pattern in patterns:
