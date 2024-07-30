@@ -111,7 +111,7 @@ def convert_to_dateadd(sql_string):
         r"(?i)date_(sub|add)\((curdate\(\)|current_date\(\)|now\(\)),\s*interval\s+(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)\)",
 
         # SQL Server
-        r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\)))",
+        r"(?i)dateadd\((day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours),\s*(-?)(\d+),\s*(?:getdate\(\)|current_timestamp|sysdatetime\(\))\)",
 
         # PostgreSQL and General
         r"(?i)(current_date|current_timestamp|now\(\))\s*(-|\+)\s*interval\s+'?(\d+)\s+(day|days|week|weeks|month|months|year|years|quarter|quarters|hour|hours)'?",
