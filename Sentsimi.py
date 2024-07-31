@@ -1,53 +1,54 @@
-from sentence_transformers import SentenceTransformer
-from scipy.spatial.distance import cosine
-import numpy as np
+import nltk
+from nltk import word_tokenize, pos_tag
+from datetime import datetime
 
-# Load pre-trained model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 
-# Define reference sentences
-reference_sentences = {
-    "past_days": [
-        "Tell me about yesterday",
-        "What happened last week",
-        "Events from recent days",
-        "Information about the past few days"
-    ],
-    "past_months": [
-        "Tell me about last month",
-        "What happened in recent months",
-        "Events from the past few months",
-        "Information about previous months"
-    ],
-    "past_years": [
-        "Tell me about last year",
-        "What happened in past years",
-        "Events from years ago",
-        "Historical information from previous years"
-    ]
-}
-
-# Create reference embeddings
-reference_embeddings = {
-    category: model.encode(sentences) 
-    for category, sentences in reference_sentences.items()
-}
-
-def identify_time_frame(user_input, threshold=0.6):
-    # Encode user input
-    input_embedding = model.encode(user_input)
+def extract_time_indicators(text):
+    tokens = word_tokenize(text.lower())
+    tagged = pos_tag(tokens)
     
-    # Calculate similarities
-    similarities = {}
-    for category, embeddings in reference_embeddings.items():
-        category_similarities = [1 - cosine(input_embedding, ref_emb) for ref_emb in embeddings]
-        similarities[category] = np.mean(category_similarities)
+    time_indicators = {
+        'days': 0,
+        'months': 0,
+        'years': 0
+    }
     
-    # Find the most similar category
-    best_category = max(similarities, key=similarities.get)
+    for i, (word, tag) in enumerate(tagged):
+        if tag == 'CD':  # Cardinal number
+            if i + 1 < len(tagged):
+                next_word = tagged[i+1][0]
+                if 'day' in next_word:
+                    time_indicators['days'] += 1
+                elif 'month' in next_word:
+                    time_indicators['months'] += 1
+                elif 'year' in next_word:
+                    time_indicators['years'] += 1
+        elif word in ['yesterday', 'today', 'tomorrow']:
+            time_indicators['days'] += 1
+        elif word in ['week', 'weekly']:
+            time_indicators['days'] += 0.5
+        elif word in ['month', 'monthly']:
+            time_indicators['months'] += 1
+        elif word in ['year', 'yearly', 'annual']:
+            time_indicators['years'] += 1
+        elif word in ['recent', 'recently', 'latest']:
+            time_indicators['days'] += 0.5
+            time_indicators['months'] += 0.3
+        elif word in ['past', 'previous', 'last', 'ago']:
+            time_indicators['days'] += 0.3
+            time_indicators['months'] += 0.3
+            time_indicators['years'] += 0.3
     
-    if similarities[best_category] > threshold:
-        return best_category
+    return time_indicators
+
+def identify_time_frame(user_input):
+    indicators = extract_time_indicators(user_input)
+    max_indicator = max(indicators, key=indicators.get)
+    
+    if indicators[max_indicator] > 0:
+        return f"past_{max_indicator}"
     else:
         return "not_specified"
 
@@ -64,6 +65,7 @@ def chatbot_response(user_input):
         return "I'm not sure about the time frame you're referring to. Could you please be more specific?"
 
 # Example usage
-print(chatbot_response("What events occurred two days ago?"))
-print(chatbot_response("Can you tell me about historical events from a decade ago?"))
-print(chatbot_response("What happened in the previous month?"))
+print(chatbot_response("What happened two days ago?"))
+print(chatbot_response("Tell me about events from last year"))
+print(chatbot_response("Any interesting news from recent months?"))
+print(chatbot_response("What's the weather like?"))
