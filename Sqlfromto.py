@@ -1,8 +1,7 @@
 import re
 
 def convert_date_format_in_sql(sql):
-    def convert_date(match):
-        date_str = match.group(0)
+    def convert_date(date_str):
         return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
 
     # Pattern to match 'whatever.cobdate' in the SQL
@@ -20,13 +19,13 @@ def convert_date_format_in_sql(sql):
         between_pattern = rf"{cobdate}\s+between\s+({date_pattern})\s+and\s+({date_pattern})"
         sql = re.sub(between_pattern, lambda m: f"{cobdate} between {convert_date(m.group(1))} and {convert_date(m.group(2))}", sql)
 
-        # Look for 'after date' pattern
-        after_pattern = rf"(?:after|>)\s*{cobdate}\s*({date_pattern})"
-        sql = re.sub(after_pattern, lambda m: f"> {cobdate} {convert_date(m.group(1))}", sql)
+        # Look for comparison operators
+        comparison_pattern = rf"({cobdate}\s*[><]=?\s*)({date_pattern})"
+        sql = re.sub(comparison_pattern, lambda m: f"{m.group(1)}{convert_date(m.group(2))}", sql)
 
     return sql
 
-
+# Test function
 def test_convert_date_format_in_sql():
     test_cases = [
         # Between case
