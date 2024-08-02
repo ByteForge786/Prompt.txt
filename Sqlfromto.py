@@ -25,3 +25,59 @@ def convert_date_format_in_sql(sql):
         sql = re.sub(after_pattern, lambda m: f"> {cobdate} {convert_date(m.group(1))}", sql)
 
     return sql
+
+
+def test_convert_date_format_in_sql():
+    test_cases = [
+        # Between case
+        ("SELECT * FROM table WHERE xyz.cobdate between 20240101 and 20241231",
+         "SELECT * FROM table WHERE xyz.cobdate between 2024-01-01 and 2024-12-31"),
+        
+        # Greater than case
+        ("SELECT * FROM table WHERE e.cobdate > 20240723",
+         "SELECT * FROM table WHERE e.cobdate > 2024-07-23"),
+        
+        # Less than case
+        ("SELECT * FROM table WHERE alias.cobdate < 20240823",
+         "SELECT * FROM table WHERE alias.cobdate < 2024-08-23"),
+        
+        # Greater than or equal to case
+        ("SELECT * FROM table WHERE cobdate >= 20240601",
+         "SELECT * FROM table WHERE cobdate >= 2024-06-01"),
+        
+        # Less than or equal to case
+        ("SELECT * FROM table WHERE t.cobdate <= 20241031",
+         "SELECT * FROM table WHERE t.cobdate <= 2024-10-31"),
+        
+        # Multiple conditions
+        ("SELECT * FROM table WHERE xyz.cobdate between 20240101 and 20241231 AND e.cobdate > 20240601",
+         "SELECT * FROM table WHERE xyz.cobdate between 2024-01-01 and 2024-12-31 AND e.cobdate > 2024-06-01"),
+        
+        # Different aliases
+        ("SELECT * FROM table WHERE t1.cobdate < 20240401 OR t2.cobdate >= 20240501",
+         "SELECT * FROM table WHERE t1.cobdate < 2024-04-01 OR t2.cobdate >= 2024-05-01"),
+        
+        # Case with no dates to convert
+        ("SELECT * FROM table WHERE id = 123",
+         "SELECT * FROM table WHERE id = 123"),
+        
+        # Case with dates but no 'cobdate'
+        ("SELECT * FROM table WHERE date between 20240101 and 20241231",
+         "SELECT * FROM table WHERE date between 20240101 and 20241231"),
+        
+        # Complex case with subquery
+        ("SELECT * FROM table1 WHERE exists (SELECT 1 FROM table2 WHERE table2.cobdate between 20240101 and 20241231) AND table1.cobdate > 20240601",
+         "SELECT * FROM table1 WHERE exists (SELECT 1 FROM table2 WHERE table2.cobdate between 2024-01-01 and 2024-12-31) AND table1.cobdate > 2024-06-01"),
+    ]
+
+    for i, (input_sql, expected_output) in enumerate(test_cases, 1):
+        result = convert_date_format_in_sql(input_sql)
+        print(f"Test case {i}:")
+        print(f"Input:    {input_sql}")
+        print(f"Output:   {result}")
+        print(f"Expected: {expected_output}")
+        print("Pass" if result == expected_output else "Fail")
+        print()
+
+# Run the test cases
+test_convert_date_format_in_sql()
