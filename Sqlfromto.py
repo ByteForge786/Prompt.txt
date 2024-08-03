@@ -26,8 +26,8 @@ def convert_date_format_in_sql(sql):
     def convert_date(date_str):
         return f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
     
-    # Pattern to match 'whatever.cobdate' or just 'cobdate' (case insensitive)
-    cobdate_pattern = r'\b(\w+\.)?cobdate\b'
+    # Pattern to match 'whatever.cobdate' or just 'cobdate' in the SQL (case insensitive)
+    cobdate_pattern = r'\b(?:\w+\.)?cobdate\b'
     
     # Pattern to match date in 'yyyymmdd' format
     date_pattern = r'\b\d{8}\b'
@@ -37,14 +37,12 @@ def convert_date_format_in_sql(sql):
     
     # For each match, look for adjacent date patterns and convert them
     for cobdate in cobdate_matches:
-        cobdate = cobdate[0] if cobdate[0] else ''  # Handle the optional alias
-        
         # Look for 'between date1 and date2' pattern (case insensitive)
-        between_pattern = rf"({cobdate}cobdate)\s+(?i:between)\s+({date_pattern})\s+(?i:and)\s+({date_pattern})"
+        between_pattern = rf"({cobdate})\s+(?i:between)\s+({date_pattern})\s+(?i:and)\s+({date_pattern})"
         sql = re.sub(between_pattern, lambda m: f"{m.group(1)} BETWEEN {convert_date(m.group(2))} AND {convert_date(m.group(3))}", sql, flags=re.IGNORECASE)
         
         # Look for comparison operators (case insensitive)
-        comparison_pattern = rf"({cobdate}cobdate\s*[><]=?\s*)({date_pattern})"
+        comparison_pattern = rf"({cobdate}\s*[><]=?\s*)({date_pattern})"
         sql = re.sub(comparison_pattern, lambda m: f"{m.group(1)}{convert_date(m.group(2))}", sql, flags=re.IGNORECASE)
     
     return sql
