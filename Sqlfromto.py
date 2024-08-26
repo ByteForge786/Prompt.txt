@@ -111,3 +111,7 @@ def convert_date_format_in_sql(sql):
         sql = re.sub(comparison_pattern, lambda m: f"{m.group(1)} {m.group(2)} {convert_date(m.group(3))}", sql)
     
     return sql
+
+
+date_slash_pattern = r'\b(\d{4})/(\d{2})/(\d{2})\b'
+    sql = re.sub(date_slash_pattern, r'\1-\2-\3', sql)
